@@ -4,7 +4,7 @@
 <img src=imgs/timetransformer.png />
 </p>
 
-Pytnon implementation paper "[**Time-Transformer: Integrating Local and Global Features for Better Time Series Generation**](https://epubs.siam.org/doi/10.1137/1.9781611978032.37)" (SDM24).
+Pytnon implementation for paper "[**Time-Transformer: Integrating Local and Global Features for Better Time Series Generation**](https://epubs.siam.org/doi/10.1137/1.9781611978032.37)" (SDM24).
 
 # Updates:
 
