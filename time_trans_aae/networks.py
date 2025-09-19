@@ -1,7 +1,13 @@
 import tensorflow as tf
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Reshape, Dropout, Conv1D, AveragePooling1D, SpatialDropout1D, LayerNormalization, MultiHeadAttention
+from tensorflow.keras.layers import Layer, Input, Dense, Reshape, Dropout, Conv1D, AveragePooling1D, SpatialDropout1D, LayerNormalization, MultiHeadAttention
 from tensorflow.keras.layers import Conv1DTranspose, Flatten
+
+
+class ConcatLastLayer(Layer):
+    def call(self, x):
+        return tf.concat(x, axis=-1)
+
 
 def timesformer_layer(tcn_inputs, trans_inputs, head_size, num_heads, filters, k_size, dilation, dropout=0.0):
     #Temporal Convolution
@@ -39,7 +45,7 @@ def timesformer_dec(input_shape, ts_shape, head_size, num_heads, n_filters, k_si
     inputs = Input(input_shape)
     x = inputs
     # De-Conv
-    cnn_dim = n_filters[0] * ts_shape[0]/(2**len(n_filters))
+    cnn_dim = n_filters[0] * int(ts_shape[0]/(2**len(n_filters)))
     ts_len = ts_shape[0]
     ts_dim = ts_shape[1]
     x = Dense(cnn_dim, activation='relu')(x)
@@ -54,7 +60,7 @@ def timesformer_dec(input_shape, ts_shape, head_size, num_heads, n_filters, k_si
     tcn, trans = res, res
     for d in dilations:
         tcn, trans = timesformer_layer(tcn, trans, head_size, num_heads, ts_dim, k_size, d, dropout)
-    x = tf.concat([tcn, trans], axis=-1)
+    x = ConcatLastLayer()([tcn, trans])
     x = Flatten()(x)
     x = Dense(ts_dim * ts_len)(x)
     x = Reshape((ts_len, ts_dim))(x)
