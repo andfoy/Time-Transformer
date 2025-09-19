@@ -47,7 +47,7 @@ filtered.with_columns(index = pl.int_range(pl.len()))
 dataset = filtered.with_columns(
    co2_dos = pl.when(pl.int_range(pl.len()) == 0).then(0.0).otherwise("co2_dos"))
 
-in_data = dataset.to_numpy()[2:]
+in_data = dataset.to_numpy()[:, 2:]
 # N = 1
 # T, D = in_data.shape
 
@@ -71,15 +71,15 @@ scaler = MinMaxScaler()
 x_train = scaler.fit_transform(train_data)
 x_valid = scaler.transform(valid_data)
 
-fig, axs = plt.subplots(5, 1, figsize=(6,5), sharex=True)
-for i in range(5):
-    rnd_idx = np.random.choice(len(x_train))
-    s = x_train[rnd_idx]
-    axs[i].set_yticks([])
-    axs[i].set_xticks([])
-    axs[i].plot(s)
-st = plt.suptitle('Original')
-st.set_y(0.93)
+# fig, axs = plt.subplots(5, 1, figsize=(6,5), sharex=True)
+# for i in range(5):
+#     rnd_idx = np.random.choice(len(x_train))
+#     s = x_train[rnd_idx]
+#     axs[i].set_yticks([])
+#     axs[i].set_xticks([])
+#     axs[i].plot(s)
+# st = plt.suptitle('Original')
+# st.set_y(0.93)
 
 
 ts_shape = x_train.shape[1:]

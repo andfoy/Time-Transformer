@@ -64,7 +64,7 @@ def timesformer_dec(input_shape, ts_shape, head_size, num_heads, n_filters, k_si
     x = Flatten()(x)
     x = Dense(ts_dim * ts_len)(x)
     x = Reshape((ts_len, ts_dim))(x)
-    outputs = x
+    outputs = ReLU()(x)
     return Model(inputs, outputs, name='decoder')
 
 
