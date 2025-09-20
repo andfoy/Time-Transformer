@@ -9,6 +9,7 @@ from sklearn.manifold import TSNE
 from matplotlib import pyplot as plt
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
+from tensorflow.keras.activations import relu
 from sklearn.model_selection import train_test_split
 import scipy.stats
 import polars as pl
@@ -107,7 +108,7 @@ dec = timesformer_dec(
 disc = discriminator(input_shape=(latent,), hidden_unit=32)
 
 def ae_loss(ori_ts, rec_ts):
-    return tf.keras.metrics.mse(ori_ts, rec_ts)
+    return tf.keras.metrics.mse(ori_ts, rec_ts) + relu(-rec_ts)
 
 def dis_loss(y_true, y_pred):
     return tf.keras.metrics.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
@@ -137,4 +138,4 @@ model = aae_model(
 
 model.compile(rec_opt=ae_opt, rec_obj=ae_loss, dis_opt=dc_opt, dis_obj=dis_loss, gen_opt=ge_opt, gen_obj=gen_loss)
 
-history = model.fit(x_train, epochs=200, batch_size=128)
+history = model.fit(x_train, epochs=1000, batch_size=128)
