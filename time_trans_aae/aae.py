@@ -65,9 +65,10 @@ class aae_model(tf.keras.Model):
             l_ae = self.rec_loss_fn(batch_x, x_rec)
             if self.range_loss_fn:
                 rl_ae = self.range_loss_fn(x_rec)
+                l_ae = l_ae + rl_ae
 
         trainable_variables = self.enc.trainable_variables+self.dec.trainable_variables
-        rec_grad = rec_tape.gradient(l_ae + rl_ae, trainable_variables)
+        rec_grad = rec_tape.gradient(l_ae, trainable_variables)
         self.rec_optimizer.apply_gradients(
             zip(rec_grad, trainable_variables)
         )
