@@ -13,7 +13,7 @@ class aae_model(tf.keras.Model):
         self.lambda_ae = lambda_ae
         self.lambda_gen = lambda_gen
 
-    def compile(self, rec_opt, rec_obj, dis_opt, dis_obj, gen_opt, gen_obj):
+    def compile(self, rec_opt, rec_obj, dis_opt, dis_obj, gen_opt, gen_obj, range_loss=None):
         super(aae_model, self).compile()
         self.rec_optimizer = rec_opt
         self.dis_optimizer = dis_opt
@@ -21,6 +21,8 @@ class aae_model(tf.keras.Model):
         self.rec_loss_fn = rec_obj
         self.dis_loss_fn = dis_obj
         self.gen_loss_fn = gen_obj
+        self.range_loss_fn = range_loss
+        self.range_loss_metric = tf.keras.metrics.Mean()
         self.rec_loss_metric = tf.keras.metrics.Mean()
         self.dis_loss_metric = tf.keras.metrics.Mean()
         self.gen_loss_metric = tf.keras.metrics.Mean()
@@ -61,9 +63,11 @@ class aae_model(tf.keras.Model):
             latent_x = self.enc(batch_x, training=True)
             x_rec = self.dec(latent_x, training=True)
             l_ae = self.rec_loss_fn(batch_x, x_rec)
-        
+            if self.range_loss_fn:
+                rl_ae = self.range_loss_fn(x_rec)
+
         trainable_variables = self.enc.trainable_variables+self.dec.trainable_variables
-        rec_grad = rec_tape.gradient(l_ae, trainable_variables)
+        rec_grad = rec_tape.gradient(l_ae + rl_ae, trainable_variables)
         self.rec_optimizer.apply_gradients(
             zip(rec_grad, trainable_variables)
         )
@@ -84,7 +88,7 @@ class aae_model(tf.keras.Model):
                 zip(dis_grad, self.dis.trainable_variables)
             )
             # clip_D = [p.assign(tf.clip_by_value(p, -0.05, 0.05)) for p in self.dis.weights]
-        
+
         #train generator
         for _ in range(int(g_s)):
             with tf.GradientTape() as gen_tape:
@@ -102,10 +106,13 @@ class aae_model(tf.keras.Model):
         self.rec_loss_metric.update_state(l_ae)
         self.dis_loss_metric.update_state(l_dis)
         self.gen_loss_metric.update_state(l_gen)
+        if self.range_loss_fn:
+            self.range_loss_metric.update_state(rl_ae)
 
         return {
             "rec_loss": self.rec_loss_metric.result(),
             "dis_loss": self.dis_loss_metric.result(),
             "gen_loss": self.gen_loss_metric.result(),
             # "d_step": self.d_step
+            "rng_loss": self.range_loss_metric.result()
         }

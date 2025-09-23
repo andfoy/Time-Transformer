@@ -52,8 +52,8 @@ in_data = dataset.to_numpy()[:, 2:]
 # N = 1
 # T, D = in_data.shape
 
-full_train_data = in_data[:-8]
-full_train_data = full_train_data.reshape(258, 185, 28)
+full_train_data = in_data[:-2]
+full_train_data = full_train_data.reshape(663, 72, 28)
 N, T, D = full_train_data.shape
 
 
@@ -107,8 +107,11 @@ dec = timesformer_dec(
 
 disc = discriminator(input_shape=(latent,), hidden_unit=32)
 
+def range_loss(rec_ts):
+    return 3 * tf.math.reduce_mean(relu(-rec_ts), -1) + 3 * tf.math.reduce_mean(relu(rec_ts - 1), -1)
+
 def ae_loss(ori_ts, rec_ts):
-    return tf.keras.metrics.mse(ori_ts, rec_ts) + relu(-rec_ts)
+    return tf.keras.metrics.mse(ori_ts, rec_ts)
 
 def dis_loss(y_true, y_pred):
     return tf.keras.metrics.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
@@ -136,6 +139,6 @@ model = aae_model(
     gen_steps=1)
 
 
-model.compile(rec_opt=ae_opt, rec_obj=ae_loss, dis_opt=dc_opt, dis_obj=dis_loss, gen_opt=ge_opt, gen_obj=gen_loss)
+model.compile(rec_opt=ae_opt, rec_obj=ae_loss, dis_opt=dc_opt, dis_obj=dis_loss, gen_opt=ge_opt, gen_obj=gen_loss, range_loss=range_loss)
 
-history = model.fit(x_train, epochs=1000, batch_size=128)
+history = model.fit(x_train, epochs=2000, batch_size=663)

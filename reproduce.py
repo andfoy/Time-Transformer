@@ -73,7 +73,7 @@ def gen_loss(y_true, y_pred):
     return tf.keras.metrics.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
 
 
-ae_schedule = PolynomialDecay(initial_learning_rate=0.005, decay_steps=300, end_learning_rate=0.0001, power=0.5)
+ae_schedule = PolynomialDecay(initial_learning_rate=0.005, decay_steps=600, end_learning_rate=0.0001, power=0.5)
 dc_schedule = PolynomialDecay(initial_learning_rate=0.001, decay_steps=300, end_learning_rate=0.0001, power=0.5)
 ge_schedule = PolynomialDecay(initial_learning_rate=0.001, decay_steps=300, end_learning_rate=0.0001, power=0.5)
 
@@ -99,6 +99,7 @@ history = model.fit(x_train, epochs=800, batch_size=230)
 
 z = tf.random.normal([x_train.shape[0], latent], 0.0, 1.0)
 sample = model.dec.predict(z)
+# sample = np.clip(sample, 0, 1)
 
 train_ori = np.mean(x_train, axis=-1)
 train_gen = np.mean(sample, axis=-1)
@@ -116,3 +117,23 @@ plt.scatter(emb[:select, 0], emb[:select, 1], alpha=0.2, color='b')
 plt.scatter(emb[select:, 0], emb[select:, 1], alpha=0.2, color='r')
 
 plt.savefig('tsne.png')
+
+
+res_d = []
+for _ in range(5):  # run 5 times to calculate avg and CI
+    x_train_d = np.concatenate((x_train, sample))
+    y_train_d = np.append(np.ones(x_train.shape[0]), np.zeros(sample.shape[0]))
+    disc_m = disc_eva(input_shape=x_train_d.shape[1:], rnn_unit=[128], dropout=0.3)
+    disc_m.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        metrics=['accuracy']
+    )
+    disc_m.fit(x_train_d, y_train_d, epochs=50, batch_size=1000, verbose=1)
+
+    test_gen = model.dec.predict(tf.random.normal([N_valid, latent], 0.0, 1.0))
+    test_ori = x_valid
+    x_test_d = np.concatenate((test_ori, test_gen))
+    y_test_d = np.append(np.ones(test_ori.shape[0]), np.zeros(test_gen.shape[0]))
+    l, acc = disc_m.evaluate(x_test_d, y_test_d)
+    res_d.append(np.abs(acc-0.5))
