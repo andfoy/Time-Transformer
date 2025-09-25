@@ -48,6 +48,13 @@ filtered.with_columns(index = pl.int_range(pl.len()))
 dataset = filtered.with_columns(
    co2_dos = pl.when(pl.int_range(pl.len()) == 0).then(0.0).otherwise("co2_dos"))
 
+columns = ['AssimLight', 'Rain', 'BlackScr', 'CO2air', 'Cum_irr', 'EC_drain_PC', 'EnScr',
+           'HumDef', 'PipeGrow', 'PipeLow', 'Rhair', 'Tair', 'Tot_PAR', 'Tot_PAR_Lamps',
+           'VentLee', 'Ventwind', 'co2_dos', 'pH_drain_PC', 'water_sup', 'AbsHumOut',
+           'Iglob', 'PARout', 'Pyrgeo', 'RadSum', 'Rhout', 'Tout', 'Winddir', 'Windsp']
+
+dataset = dataset.select()
+
 in_data = dataset.to_numpy()[:, 2:]
 # N = 1
 # T, D = in_data.shape
@@ -108,10 +115,13 @@ dec = timesformer_dec(
 disc = discriminator(input_shape=(latent,), hidden_unit=32)
 
 def range_loss(rec_ts):
-    return 3 * tf.math.reduce_mean(relu(-rec_ts), -1) + 3 * tf.math.reduce_mean(relu(rec_ts - 1), -1)
+    return tf.math.reduce_mean(relu(-rec_ts[:, :, 2:]), -1) + tf.math.reduce_mean(relu(rec_ts[:, :, 2:] - 1), -1)
+
+def cls_loss(ori_ts, rec_ts):
+    return tf.keras.metrics.binary_crossentropy(y_true=ori_ts[:, :, :2], y_pred=rec_ts[:, :, :2], from_logits=True)
 
 def ae_loss(ori_ts, rec_ts):
-    return tf.keras.metrics.mse(ori_ts, rec_ts)
+    return 10 * tf.keras.metrics.mse(ori_ts[:, :, 2:], rec_ts[:, :, 2:])
 
 def dis_loss(y_true, y_pred):
     return tf.keras.metrics.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
@@ -139,6 +149,6 @@ model = aae_model(
     gen_steps=1)
 
 
-model.compile(rec_opt=ae_opt, rec_obj=ae_loss, dis_opt=dc_opt, dis_obj=dis_loss, gen_opt=ge_opt, gen_obj=gen_loss, range_loss=range_loss)
+model.compile(rec_opt=ae_opt, rec_obj=ae_loss, dis_opt=dc_opt, dis_obj=dis_loss, gen_opt=ge_opt, gen_obj=gen_loss, range_loss=range_loss, cls_loss=cls_loss)
 
 history = model.fit(x_train, epochs=2000, batch_size=663)

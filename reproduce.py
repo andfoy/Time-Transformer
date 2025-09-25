@@ -66,6 +66,8 @@ disc = discriminator(input_shape=(latent,), hidden_unit=32)
 def ae_loss(ori_ts, rec_ts):
     return tf.keras.metrics.mse(ori_ts, rec_ts)
 
+
+
 def dis_loss(y_true, y_pred):
     return tf.keras.metrics.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
 

@@ -13,7 +13,7 @@ class aae_model(tf.keras.Model):
         self.lambda_ae = lambda_ae
         self.lambda_gen = lambda_gen
 
-    def compile(self, rec_opt, rec_obj, dis_opt, dis_obj, gen_opt, gen_obj, range_loss=None):
+    def compile(self, rec_opt, rec_obj, dis_opt, dis_obj, gen_opt, gen_obj, range_loss=None, cls_loss=None):
         super(aae_model, self).compile()
         self.rec_optimizer = rec_opt
         self.dis_optimizer = dis_opt
@@ -22,7 +22,9 @@ class aae_model(tf.keras.Model):
         self.dis_loss_fn = dis_obj
         self.gen_loss_fn = gen_obj
         self.range_loss_fn = range_loss
+        self.cls_loss_fn = cls_loss
         self.range_loss_metric = tf.keras.metrics.Mean()
+        self.cls_loss_metric = tf.keras.metrics.Mean()
         self.rec_loss_metric = tf.keras.metrics.Mean()
         self.dis_loss_metric = tf.keras.metrics.Mean()
         self.gen_loss_metric = tf.keras.metrics.Mean()
@@ -65,7 +67,8 @@ class aae_model(tf.keras.Model):
             l_ae = self.rec_loss_fn(batch_x, x_rec)
             if self.range_loss_fn:
                 rl_ae = self.range_loss_fn(x_rec)
-                l_ae = l_ae + rl_ae
+                cls_l = self.cls_loss_fn(batch_x, x_rec)
+                l_ae = l_ae + rl_ae + cls_l
 
         trainable_variables = self.enc.trainable_variables+self.dec.trainable_variables
         rec_grad = rec_tape.gradient(l_ae, trainable_variables)
@@ -109,11 +112,13 @@ class aae_model(tf.keras.Model):
         self.gen_loss_metric.update_state(l_gen)
         if self.range_loss_fn:
             self.range_loss_metric.update_state(rl_ae)
+            self.cls_loss_metric.update_state(cls_l)
 
         return {
             "rec_loss": self.rec_loss_metric.result(),
             "dis_loss": self.dis_loss_metric.result(),
             "gen_loss": self.gen_loss_metric.result(),
+            "cls_loss": self.cls_loss_metric.result(),
             # "d_step": self.d_step
             "rng_loss": self.range_loss_metric.result()
         }
