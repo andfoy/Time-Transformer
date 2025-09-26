@@ -132,7 +132,6 @@ for _ in range(5):  # run 5 times to calculate avg and CI
         metrics=['accuracy']
     )
     disc_m.fit(x_train_d, y_train_d, epochs=50, batch_size=1000, verbose=1)
-
     test_gen = model.dec.predict(tf.random.normal([N_valid, latent], 0.0, 1.0))
     test_ori = x_valid
     x_test_d = np.concatenate((test_ori, test_gen))

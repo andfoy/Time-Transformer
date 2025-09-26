@@ -10,6 +10,8 @@ from matplotlib import pyplot as plt
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
 from tensorflow.keras.activations import relu
+from tensorflow.keras.ops import sigmoid
+
 from sklearn.model_selection import train_test_split
 import scipy.stats
 import polars as pl
@@ -53,14 +55,13 @@ columns = ['AssimLight', 'Rain', 'BlackScr', 'CO2air', 'Cum_irr', 'EC_drain_PC',
            'VentLee', 'Ventwind', 'co2_dos', 'pH_drain_PC', 'water_sup', 'AbsHumOut',
            'Iglob', 'PARout', 'Pyrgeo', 'RadSum', 'Rhout', 'Tout', 'Winddir', 'Windsp']
 
-dataset = dataset.select()
-
-in_data = dataset.to_numpy()[:, 2:]
+dataset = dataset.select(columns)
+in_data = dataset.to_numpy()
 # N = 1
 # T, D = in_data.shape
 
 full_train_data = in_data[:-2]
-full_train_data = full_train_data.reshape(663, 72, 28)
+full_train_data = full_train_data.reshape(3978, 12, 28)
 N, T, D = full_train_data.shape
 
 
@@ -151,4 +152,28 @@ model = aae_model(
 
 model.compile(rec_opt=ae_opt, rec_obj=ae_loss, dis_opt=dc_opt, dis_obj=dis_loss, gen_opt=ge_opt, gen_obj=gen_loss, range_loss=range_loss, cls_loss=cls_loss)
 
-history = model.fit(x_train, epochs=2000, batch_size=663)
+history = model.fit(x_train, epochs=2000, batch_size=3000)
+
+z = tf.random.normal([x_train.shape[0], latent], 0.0, 1.0)
+sample = model.dec.predict(z)
+sample[:, :, :2] = sigmoid(sample[:, :, :2])
+sample[:, :, :2][sample[:, :, :2] >= 0.5] = 1
+sample[:, :, :2][sample[:, :, :2] < 0.5] = 0
+# sample = np.clip(sample, 0, 1)
+
+train_ori = np.mean(x_train, axis=-1)
+train_gen = np.mean(sample, axis=-1)
+
+select = x_train.shape[0]
+idx = np.random.permutation(select)
+ori = train_ori[idx]
+gen = train_gen[idx]
+prep_data_final = np.concatenate((ori, gen), axis = 0)
+
+emb = TSNE(n_components=2, learning_rate=10, init = 'random', perplexity=50, max_iter=400).fit_transform(prep_data_final)
+plt.yticks([])
+plt.xticks([])
+plt.scatter(emb[:select, 0], emb[:select, 1], alpha=0.2, color='b')
+plt.scatter(emb[select:, 0], emb[select:, 1], alpha=0.2, color='r')
+
+plt.savefig('tsne_hour.png')
